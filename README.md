@@ -1,6 +1,6 @@
 # zqr
 
-`zqr` is a high-performance command-line QR Code Model 2 encoder and renderer built with [Zig 0.17](https://ziglang.org/). Powered by [z-libqr](https://github.com/carlos-sweb/z-libqr), [z-args](https://github.com/carlos-sweb/z-args), and [z-print](https://github.com/carlos-sweb/z-print).
+`zqr` is a high-performance command-line QR Code Model 2 encoder and renderer built with [Zig 0.17](https://ziglang.org/). Powered by [z-libqr](https://github.com/carlos-sweb/z-libqr) v1.3.0, [z-args](https://github.com/carlos-sweb/z-args) v0.1.0, and [z-print](https://github.com/carlos-sweb/z-print) v0.1.0.
 
 It exposes all features of the ISO/IEC 18004:2015 specification, supporting four output formats (ANSI half-blocks, ASCII, SVG, and PNG), multi-mode DP segmentation optimization, JIS X 0208 Kanji, GS1/AIM FNC1 modes, ECI, and Structured Append (up to 16 symbols).
 

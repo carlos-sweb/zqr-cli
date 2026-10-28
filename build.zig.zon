@@ -9,11 +9,11 @@
             .hash = "z_libqr-1.3.0-P-K0qrNVBQCNfhshkl6Uh2BdazsNJi8VIqQsYZlEqOXH",
         },
         .zargs = .{
-            .url = "git+https://github.com/carlos-sweb/z-args.git",
+            .url = "git+https://github.com/carlos-sweb/z-args.git?ref=v0.1.0#ad8ff79413de8eef02bc060f8a29ed3a84becd0a",
             .hash = "zargs-0.1.0-PvR7OLAkAQAl6DabyEwAdil8uPoqiDaMAq8arTsG0OBt",
         },
         .z_print = .{
-            .url = "git+https://github.com/carlos-sweb/z-print.git",
+            .url = "git+https://github.com/carlos-sweb/z-print.git?ref=v0.1.0#90e650b490cd7b6741970cee7374830d3800a756",
             .hash = "z_print-0.1.0-ZIUVWU2eBAA4p-d3xjhObamllOvZ0YOX_6SjbBjbzru2",
         },
     },

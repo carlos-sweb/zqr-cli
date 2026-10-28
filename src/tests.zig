@@ -109,3 +109,74 @@ test "render_terminal: ASCII and ANSI rendering" {
     try testing.expect(ansi_list.items.len > 0);
     try testing.expect(std.mem.indexOf(u8, ansi_list.items, "▀") != null);
 }
+
+test "cli output correctness: cmd_encode matches z-libqr directly" {
+    const testing = std.testing;
+    const a = testing.allocator;
+
+    const test_out = "/tmp/zqr_correctness_test.txt";
+    defer _ = std.c.unlink(test_out);
+
+    // 1. Run CLI command: zqr encode "HELLO WORLD" -e high -m 2 -f ascii -o /tmp/zqr_correctness_test.txt
+    const args = [_][:0]const u8{
+        "HELLO WORLD",
+        "-e",
+        "high",
+        "-m",
+        "2",
+        "-f",
+        "ascii",
+        "-o",
+        test_out,
+    };
+    try cmd_encode.run(a, &args);
+
+    // Read generated CLI output
+    const cli_output = try io_util.readFileAlloc(a, test_out);
+    defer a.free(cli_output);
+
+    // 2. Generate expected output directly using z-libqr v1.3.0
+    var buf: [zqr.Tier3.max_buffer_len]u8 = undefined;
+    const expected_matrix = try zqr.Tier3.encodeAdvanced(&buf, "HELLO WORLD", .{
+        .ecc = .high,
+        .mask = 2,
+    });
+
+    var expected_list: std.ArrayList(u8) = .empty;
+    defer expected_list.deinit(a);
+
+    const ListWriter = struct {
+        list: *std.ArrayList(u8),
+        allocator: std.mem.Allocator,
+        pub fn writeAll(self: @This(), bytes: []const u8) !void {
+            try self.list.appendSlice(self.allocator, bytes);
+        }
+    };
+    try render_terminal.renderAscii(ListWriter{ .list = &expected_list, .allocator = a }, expected_matrix, 4);
+
+    // 3. Verify exact byte-for-byte match
+    try testing.expectEqualStrings(expected_list.items, cli_output);
+
+    // 4. Also verify default options: zqr encode "HELLO WORLD" -f ascii -o test_out
+    const default_args = [_][:0]const u8{
+        "HELLO WORLD",
+        "-f",
+        "ascii",
+        "-o",
+        test_out,
+    };
+    try cmd_encode.run(a, &default_args);
+
+    const cli_default_output = try io_util.readFileAlloc(a, test_out);
+    defer a.free(cli_default_output);
+
+    const expected_default_matrix = try zqr.Tier3.encodeAdvanced(&buf, "HELLO WORLD", .{
+        .ecc = .medium,
+    });
+
+    var expected_default_list: std.ArrayList(u8) = .empty;
+    defer expected_default_list.deinit(a);
+
+    try render_terminal.renderAscii(ListWriter{ .list = &expected_default_list, .allocator = a }, expected_default_matrix, 4);
+    try testing.expectEqualStrings(expected_default_list.items, cli_default_output);
+}
