@@ -180,3 +180,146 @@ test "cli output correctness: cmd_encode matches z-libqr directly" {
     try render_terminal.renderAscii(ListWriter{ .list = &expected_default_list, .allocator = a }, expected_default_matrix, 4);
     try testing.expectEqualStrings(expected_default_list.items, cli_default_output);
 }
+
+const cmd_decode = @import("cmd_decode.zig");
+
+test "cmd_decode: matrix parser formats (##/  , #/., 1/0, █/ , ANSI)" {
+    const testing = std.testing;
+    const a = testing.allocator;
+
+    const payload = "DECODER VERIFICATION 2026";
+    var buf: [zqr.Tier3.max_buffer_len]u8 = undefined;
+    const m = try zqr.Tier3.encodeAdvanced(&buf, payload, .{
+        .ecc = .quartile,
+    });
+
+    const ListWriter = struct {
+        list: *std.ArrayList(u8),
+        allocator: std.mem.Allocator,
+        pub fn writeAll(self: @This(), bytes: []const u8) !void {
+            try self.list.appendSlice(self.allocator, bytes);
+        }
+    };
+
+    // 1. Standard ASCII (## and '  ')
+    var ascii_list: std.ArrayList(u8) = .empty;
+    defer ascii_list.deinit(a);
+    try render_terminal.renderAscii(ListWriter{ .list = &ascii_list, .allocator = a }, m, 3);
+
+    const parsed_ascii = try cmd_decode.parseMatrixFromText(a, ascii_list.items);
+    defer a.free(parsed_ascii.modules);
+    try testing.expectEqual(m.size, parsed_ascii.size);
+
+    var dec_buf: [1024]u8 = undefined;
+    const res_ascii = try zqr.DecoderTier3.decode(parsed_ascii.modules, parsed_ascii.size, &dec_buf);
+    try testing.expectEqualStrings(payload, res_ascii.data);
+    try testing.expectEqual(m.version, res_ascii.metadata.version);
+    try testing.expectEqual(zqr.Ecc.quartile, res_ascii.metadata.ecc);
+
+    // 2. ANSI half-blocks (▀ and escape sequences)
+    var ansi_list: std.ArrayList(u8) = .empty;
+    defer ansi_list.deinit(a);
+    try render_terminal.renderAnsi(ListWriter{ .list = &ansi_list, .allocator = a }, m, 2);
+
+    const parsed_ansi = try cmd_decode.parseMatrixFromText(a, ansi_list.items);
+    defer a.free(parsed_ansi.modules);
+    try testing.expectEqual(m.size, parsed_ansi.size);
+
+    const res_ansi = try zqr.DecoderTier3.decode(parsed_ansi.modules, parsed_ansi.size, &dec_buf);
+    try testing.expectEqualStrings(payload, res_ansi.data);
+
+    // 3. Dot and Hash (# and .) without quiet zone
+    var dot_hash: std.ArrayList(u8) = .empty;
+    defer dot_hash.deinit(a);
+    const size = @as(usize, m.size);
+    for (0..size) |r| {
+        for (0..size) |c| {
+            const is_dark = m.modules[r * size + c] == 1;
+            try dot_hash.append(a, if (is_dark) '#' else '.');
+        }
+        try dot_hash.append(a, '\n');
+    }
+
+    const parsed_dh = try cmd_decode.parseMatrixFromText(a, dot_hash.items);
+    defer a.free(parsed_dh.modules);
+    try testing.expectEqual(m.size, parsed_dh.size);
+    const res_dh = try zqr.DecoderTier3.decode(parsed_dh.modules, parsed_dh.size, &dec_buf);
+    try testing.expectEqualStrings(payload, res_dh.data);
+
+    // 4. Binary 1 and 0 (with leading/trailing quiet zone lines)
+    var bin_list: std.ArrayList(u8) = .empty;
+    defer bin_list.deinit(a);
+    try bin_list.appendSlice(a, "00000000000000000000000000000\n00000000000000000000000000000\n");
+    for (0..size) |r| {
+        try bin_list.appendSlice(a, "0000");
+        for (0..size) |c| {
+            const is_dark = m.modules[r * size + c] == 1;
+            try bin_list.append(a, if (is_dark) '1' else '0');
+        }
+        try bin_list.appendSlice(a, "0000\n");
+    }
+    try bin_list.appendSlice(a, "00000000000000000000000000000\n");
+
+    const parsed_bin = try cmd_decode.parseMatrixFromText(a, bin_list.items);
+    defer a.free(parsed_bin.modules);
+    try testing.expectEqual(m.size, parsed_bin.size);
+    const res_bin = try zqr.DecoderTier3.decode(parsed_bin.modules, parsed_bin.size, &dec_buf);
+    try testing.expectEqualStrings(payload, res_bin.data);
+
+    // 5. Full block █ (UTF-8 0xE2 0x96 0x88) and space
+    var block_list: std.ArrayList(u8) = .empty;
+    defer block_list.deinit(a);
+    for (0..size) |r| {
+        for (0..size) |c| {
+            const is_dark = m.modules[r * size + c] == 1;
+            if (is_dark) {
+                try block_list.appendSlice(a, "█");
+            } else {
+                try block_list.appendSlice(a, " ");
+            }
+        }
+        try block_list.append(a, '\n');
+    }
+
+    // 6. Asymmetric quiet zone: 6 modules on left, 2 on right, 3 on top, 1 on bottom
+    var asym_list: std.ArrayList(u8) = .empty;
+    defer asym_list.deinit(a);
+    // 3 lines top
+    try asym_list.appendSlice(a, "\n\n\n");
+    for (0..size) |r| {
+        // 6 modules left (12 spaces)
+        try asym_list.appendSlice(a, "            ");
+        for (0..size) |c| {
+            const is_dark = m.modules[r * size + c] == 1;
+            try asym_list.appendSlice(a, if (is_dark) "##" else "  ");
+        }
+        // 2 modules right (4 spaces)
+        try asym_list.appendSlice(a, "    \n");
+    }
+    // 1 line bottom
+    try asym_list.appendSlice(a, "\n");
+
+    const parsed_asym = try cmd_decode.parseMatrixFromText(a, asym_list.items);
+    defer a.free(parsed_asym.modules);
+    try testing.expectEqual(m.size, parsed_asym.size);
+    const res_asym = try zqr.DecoderTier3.decode(parsed_asym.modules, parsed_asym.size, &dec_buf);
+    try testing.expectEqualStrings(payload, res_asym.data);
+}
+
+test "cmd_decode: error cases (empty, non-qr, invalid dimensions)" {
+    const testing = std.testing;
+    const a = testing.allocator;
+
+    try testing.expectError(error.EmptyInput, cmd_decode.parseMatrixFromText(a, ""));
+    try testing.expectError(error.NoDarkModulesFound, cmd_decode.parseMatrixFromText(a, "\n\n   \n\r\n"));
+    try testing.expectError(error.NoDarkModulesFound, cmd_decode.parseMatrixFromText(a, "....... \n....... \n"));
+    // 5x5 is too small (minimum QR is 21x21)
+    const small_box =
+        \\#####
+        \\#...#
+        \\#.#.#
+        \\#...#
+        \\#####
+    ;
+    try testing.expectError(error.InvalidMatrixDimensions, cmd_decode.parseMatrixFromText(a, small_box));
+}

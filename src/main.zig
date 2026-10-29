@@ -4,10 +4,11 @@ const z_print = @import("z_print");
 const print_util = @import("print_util.zig");
 
 const cmd_encode = @import("cmd_encode.zig");
+const cmd_decode = @import("cmd_decode.zig");
 const cmd_info = @import("cmd_info.zig");
 
-pub const VERSION = "0.1.0";
-pub const ZQR_VERSION = "1.3.0";
+pub const VERSION = "0.2.0";
+pub const ZQR_VERSION = "1.4.0";
 
 fn printVersion() !void {
     try print_util.printStdout("zqr {s} (z-libqr {s})\n", .{ VERSION, ZQR_VERSION });
@@ -22,15 +23,18 @@ fn printRootHelp() !void {
 
     try print_util.printStdout("{s:bold}COMMANDS:{s:reset}\n", .{""});
     try print_util.printStdout("  {s:bold:green}encode{s:reset}, {s:bold:green}e{s:reset}    Encode data and render to SVG, PNG, ANSI, or ASCII\n", .{ "", "", "", "" });
+    try print_util.printStdout("  {s:bold:green}decode{s:reset}, {s:bold:green}d{s:reset}    Decode QR code matrix from ASCII or terminal text\n", .{ "", "", "", "" });
     try print_util.printStdout("  {s:bold:green}info{s:reset}, {s:bold:green}i{s:reset}      Analyze payload capacity, minimum versions, and optimal segments\n\n", .{ "", "", "", "" });
 
     try print_util.printStdout("{s:bold}EXAMPLES:{s:reset}\n", .{""});
     try print_util.printStdout("  # Display QR code in terminal using ANSI half-blocks:\n", .{});
     try print_util.printStdout("  zqr encode \"Hello World\"\n\n", .{});
+    try print_util.printStdout("  # Pipe encode to decode roundtrip:\n", .{});
+    try print_util.printStdout("  zqr encode \"Hello World\" -f ascii | zqr decode -\n\n", .{});
     try print_util.printStdout("  # Generate scalable SVG vector:\n", .{});
     try print_util.printStdout("  zqr encode \"https://example.com\" -o code.svg\n\n", .{});
-    try print_util.printStdout("  # High-error-correction PNG with custom scale and colors:\n", .{});
-    try print_util.printStdout("  zqr encode \"SECRET\" -e H -s 12 --fg #003366FF -o qr.png\n\n", .{});
+    try print_util.printStdout("  # Decode from ASCII file with symbol metadata:\n", .{});
+    try print_util.printStdout("  zqr decode -i qr.txt --verbose\n\n", .{});
     try print_util.printStdout("  # Analyze minimum version required across ECC levels:\n", .{});
     try print_util.printStdout("  zqr info \"Text to analyze\"\n\n", .{});
     try print_util.printStdout("Run '{s:bold}zqr <COMMAND> --help{s:reset}' for detailed options on each command.\n", .{ "", "" });
@@ -60,6 +64,12 @@ pub const root_command = zargs.Commands.Command{
             .alias = "e",
             .help = "Encode data and render to SVG, PNG, ANSI, or ASCII",
             .action = cmd_encode.run,
+        },
+        .{
+            .name = "decode",
+            .alias = "d",
+            .help = "Decode QR code matrix from ASCII or terminal text",
+            .action = cmd_decode.run,
         },
         .{
             .name = "info",
@@ -93,8 +103,12 @@ pub fn main(init: std.process.Init) !void {
         return;
     }
 
-    zargs.Commands.dispatch(root_command, allocator, args) catch {
-        std.process.exit(1);
+    zargs.Commands.dispatch(root_command, allocator, args) catch |err| {
+        const exit_code: u8 = switch (err) {
+            error.InputOutput, error.MissingInputData, error.FileNotFound, error.AccessDenied, error.ReadFailed, error.WriteFailed => 2,
+            else => 1,
+        };
+        std.process.exit(exit_code);
     };
 }
 

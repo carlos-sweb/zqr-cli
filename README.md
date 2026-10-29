@@ -1,6 +1,6 @@
 # zqr
 
-`zqr` is a high-performance command-line QR Code Model 2 encoder and renderer built with [Zig 0.17](https://ziglang.org/). Powered by [z-libqr](https://github.com/carlos-sweb/z-libqr) v1.3.0, [z-args](https://github.com/carlos-sweb/z-args) v0.1.0, and [z-print](https://github.com/carlos-sweb/z-print) v0.1.0.
+`zqr` is a high-performance command-line QR Code Model 2 encoder and renderer built with [Zig 0.17](https://ziglang.org/). Powered by [z-libqr](https://github.com/carlos-sweb/z-libqr) v1.4.0, [z-args](https://github.com/carlos-sweb/z-args) v0.1.0, and [z-print](https://github.com/carlos-sweb/z-print) v0.1.0.
 
 It exposes all features of the ISO/IEC 18004:2015 specification, supporting four output formats (ANSI half-blocks, ASCII, SVG, and PNG), multi-mode DP segmentation optimization, JIS X 0208 Kanji, GS1/AIM FNC1 modes, ECI, and Structured Append (up to 16 symbols).
 
@@ -38,6 +38,7 @@ zqr -h, --help
 | Command | Alias | Description |
 |---|---|---|
 | `encode` | `e` | Encode input data and render to SVG, PNG, ANSI half-blocks, or ASCII text |
+| `decode` | `d` | Decode QR Code matrix from ASCII text or terminal ANSI rendering |
 | `info` | `i` | Analyze data payload capacity and minimum version requirements across ECC levels |
 
 ---
@@ -96,6 +97,57 @@ Options:
 - `-i, --read-from <path>`: Read payload from file or `-` for stdin.
 - `--kanji`: Enable JIS X 0208 Kanji mode analysis.
 - `--optimize`: Multi-mode DP segmentation optimizer (default: true).
+
+---
+
+## Subcommand: `decode`
+
+Decodes a QR code module matrix from ASCII text (`##`/`  `, `#`/`.`, `1`/`0`, `█`/` `) or terminal ANSI half-block rendering (`▀`). Supports all QR Code Model 2 versions (1..40) with Reed-Solomon and BCH error correction.
+
+```bash
+zqr decode [OPTIONS] [FILE]
+```
+
+### Options Reference
+
+| Flag | Short | Default | Description |
+|---|---|---|---|
+| `-i, --read-from <path>` | `-i` | `""` | Read matrix from file or `-` for stdin. |
+| `-v, --verbose` | `-v` | `false` | Print symbol metadata (version, ECC, mask, corrections) to stderr. |
+| `-h, --help` | `-h` | | Show help for `decode` command. |
+
+### Exit Codes
+
+| Code | Meaning | Description |
+|---|---|---|
+| `0` | Success | QR symbol decoded successfully; payload written to stdout. |
+| `1` | Decode Error | Corrupt matrix, uncorrectable Reed-Solomon/BCH errors, or invalid QR dimensions. |
+| `2` | I/O Error | Missing input data, file not found, or read/write I/O failure. |
+
+### Canonical Pipe Example
+
+```bash
+zqr encode "Hello World" -f ascii | zqr decode -
+# Output: Hello World
+```
+
+With symbol metadata on stderr:
+```bash
+zqr encode "Hello World" -f ascii | zqr decode - --verbose
+```
+Stderr output:
+```text
+version: 1
+ecc: medium
+mask: 0
+modes_used: alphanumeric
+errors_corrected_format: 0
+errors_corrected_version: 0
+errors_corrected_data: 0
+has_sa: 0
+has_eci: 0
+has_fnc1: 0
+```
 
 ---
 
