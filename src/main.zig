@@ -1,13 +1,21 @@
+//! zqr — command-line QR Code Model 2 encoder and decoder.
+//!
+//! Version string comes from `build.zig.zon` via `cli_options.cli_version`.
+//! Library dependency: z-libqr (see `ZQR_VERSION` and `build.zig.zon`).
+
 const std = @import("std");
 const zargs = @import("zargs");
 const z_print = @import("z_print");
+const cli_options = @import("cli_options");
 const print_util = @import("print_util.zig");
 
 const cmd_encode = @import("cmd_encode.zig");
 const cmd_decode = @import("cmd_decode.zig");
 const cmd_info = @import("cmd_info.zig");
 
-pub const VERSION = "0.3.0";
+/// CLI version from build.zig.zon (single source of truth).
+pub const VERSION: []const u8 = cli_options.cli_version;
+/// Must match the z-libqr ref pinned in build.zig.zon.
 pub const ZQR_VERSION = "1.5.0";
 
 fn printVersion() !void {
@@ -15,7 +23,7 @@ fn printVersion() !void {
 }
 
 fn printRootHelp() !void {
-    try print_util.printStdout("{s:bold:cyan}zqr{s:reset} — QR Code Model 2 encoder and renderer (v{s})\n\n", .{ "", "", VERSION });
+    try print_util.printStdout("{s:bold:cyan}zqr{s:reset} — QR Code Model 2 encoder and decoder (v{s})\n\n", .{ "", "", VERSION });
     try print_util.printStdout("{s:bold}USAGE:{s:reset}\n", .{""});
     try print_util.printStdout("  zqr <COMMAND> [OPTIONS] [DATA]\n", .{});
     try print_util.printStdout("  zqr -V, --version\n", .{});
@@ -58,7 +66,7 @@ fn rootAction(allocator: std.mem.Allocator, args: []const [:0]const u8) anyerror
 
 pub const root_command = zargs.Commands.Command{
     .name = "zqr",
-    .help = "QR Code Model 2 encoder and renderer",
+    .help = "QR Code Model 2 encoder and decoder",
     .children = &.{
         .{
             .name = "encode",

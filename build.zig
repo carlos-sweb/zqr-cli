@@ -1,13 +1,16 @@
 const std = @import("std");
 
+/// Single source of truth for the CLI version string: build.zig.zon.
+const cli_version: []const u8 = @import("build.zig.zon").version;
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const enable_png = b.option(bool, "enable-png", "Enable PNG rendering via libpng (default: true)") orelse true;
+    const enable_png = b.option(bool, "enable-png", "Enable PNG rendering and PNG decode via libpng (default: true)") orelse true;
 
     const options = b.addOptions();
     options.addOption(bool, "enable_png", enable_png);
-    options.addOption([]const u8, "cli_version", "0.1.0");
+    options.addOption([]const u8, "cli_version", cli_version);
     const options_mod = options.createModule();
 
     const zqr_dep = b.dependency("zqr", .{
