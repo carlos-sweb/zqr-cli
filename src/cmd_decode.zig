@@ -1,3 +1,9 @@
+//! `zqr decode` — decode one QR symbol from PNG, ASCII matrix, or ANSI half-blocks.
+//!
+//! PNG is detected by magic bytes; large images are downscaled to ≤1024×1024.
+//! `--verbose` prints `key: value` metadata on stderr. Structured Append metadata
+//! is reported; the CLI does not reassemble multi-symbol sequences.
+
 const std = @import("std");
 const zargs = @import("zargs");
 const zqr = @import("zqr");

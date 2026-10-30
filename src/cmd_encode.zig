@@ -1,3 +1,6 @@
+//! `zqr encode` — encode payload to SVG, PNG, ANSI half-blocks, or ASCII.
+//! Flags and defaults are declared on `EncodeArgs`; see README for the full table.
+
 const std = @import("std");
 const zargs = @import("zargs");
 const z_print = @import("z_print");

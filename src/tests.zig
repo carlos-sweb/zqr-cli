@@ -1,3 +1,5 @@
+//! Integration and unit tests for zqr-cli (encode, decode, PNG, pipes, colors).
+
 const std = @import("std");
 const zqr = @import("zqr");
 const color = @import("color.zig");
