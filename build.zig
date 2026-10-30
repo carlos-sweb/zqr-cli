@@ -36,6 +36,14 @@ pub fn build(b: *std.Build) void {
             .{ .name = "cli_options", .module = options_mod },
         },
     });
+    if (enable_png) {
+        exe_mod.addCSourceFile(.{
+            .file = b.path("c/png_read.c"),
+            .flags = &[_][]const u8{ "-std=c99", "-Wall", "-Wextra" },
+        });
+        exe_mod.addIncludePath(b.path("c"));
+        exe_mod.linkSystemLibrary("png", .{});
+    }
 
     const exe = b.addExecutable(.{
         .name = "zqr",
@@ -60,6 +68,14 @@ pub fn build(b: *std.Build) void {
             .{ .name = "cli_options", .module = options_mod },
         },
     });
+    if (enable_png) {
+        test_mod.addCSourceFile(.{
+            .file = b.path("c/png_read.c"),
+            .flags = &[_][]const u8{ "-std=c99", "-Wall", "-Wextra" },
+        });
+        test_mod.addIncludePath(b.path("c"));
+        test_mod.linkSystemLibrary("png", .{});
+    }
     const cli_tests = b.addTest(.{ .root_module = test_mod });
     const run_cli_tests = b.addRunArtifact(cli_tests);
 

@@ -7,8 +7,8 @@ const cmd_encode = @import("cmd_encode.zig");
 const cmd_decode = @import("cmd_decode.zig");
 const cmd_info = @import("cmd_info.zig");
 
-pub const VERSION = "0.2.0";
-pub const ZQR_VERSION = "1.4.0";
+pub const VERSION = "0.3.0";
+pub const ZQR_VERSION = "1.5.0";
 
 fn printVersion() !void {
     try print_util.printStdout("zqr {s} (z-libqr {s})\n", .{ VERSION, ZQR_VERSION });
@@ -23,13 +23,14 @@ fn printRootHelp() !void {
 
     try print_util.printStdout("{s:bold}COMMANDS:{s:reset}\n", .{""});
     try print_util.printStdout("  {s:bold:green}encode{s:reset}, {s:bold:green}e{s:reset}    Encode data and render to SVG, PNG, ANSI, or ASCII\n", .{ "", "", "", "" });
-    try print_util.printStdout("  {s:bold:green}decode{s:reset}, {s:bold:green}d{s:reset}    Decode QR code matrix from ASCII or terminal text\n", .{ "", "", "", "" });
+    try print_util.printStdout("  {s:bold:green}decode{s:reset}, {s:bold:green}d{s:reset}    Decode QR code from PNG image or ASCII/ANSI terminal text\n", .{ "", "", "", "" });
     try print_util.printStdout("  {s:bold:green}info{s:reset}, {s:bold:green}i{s:reset}      Analyze payload capacity, minimum versions, and optimal segments\n\n", .{ "", "", "", "" });
 
     try print_util.printStdout("{s:bold}EXAMPLES:{s:reset}\n", .{""});
     try print_util.printStdout("  # Display QR code in terminal using ANSI half-blocks:\n", .{});
     try print_util.printStdout("  zqr encode \"Hello World\"\n\n", .{});
-    try print_util.printStdout("  # Pipe encode to decode roundtrip:\n", .{});
+    try print_util.printStdout("  # Pipe encode to decode roundtrip (PNG or ASCII):\n", .{});
+    try print_util.printStdout("  zqr encode \"Hello World\" -f png | zqr decode -\n", .{});
     try print_util.printStdout("  zqr encode \"Hello World\" -f ascii | zqr decode -\n\n", .{});
     try print_util.printStdout("  # Generate scalable SVG vector:\n", .{});
     try print_util.printStdout("  zqr encode \"https://example.com\" -o code.svg\n\n", .{});
@@ -68,7 +69,7 @@ pub const root_command = zargs.Commands.Command{
         .{
             .name = "decode",
             .alias = "d",
-            .help = "Decode QR code matrix from ASCII or terminal text",
+            .help = "Decode QR code from PNG image or ASCII/ANSI terminal text",
             .action = cmd_decode.run,
         },
         .{

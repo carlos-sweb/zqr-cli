@@ -182,6 +182,7 @@ test "cli output correctness: cmd_encode matches z-libqr directly" {
 }
 
 const cmd_decode = @import("cmd_decode.zig");
+const png_loader = @import("png_loader.zig");
 
 test "cmd_decode: matrix parser formats (##/  , #/., 1/0, █/ , ANSI)" {
     const testing = std.testing;
@@ -322,4 +323,127 @@ test "cmd_decode: error cases (empty, non-qr, invalid dimensions)" {
         \\#####
     ;
     try testing.expectError(error.InvalidMatrixDimensions, cmd_decode.parseMatrixFromText(a, small_box));
+}
+
+test "cmd_decode: PNG decoding end-to-end via png_loader" {
+    const testing = std.testing;
+    const a = testing.allocator;
+
+    const payload = "ZQR CLI PNG DECODE TEST 2026";
+    var buf: [zqr.Tier3.max_buffer_len]u8 = undefined;
+    const m = try zqr.Tier3.encodeAdvanced(&buf, payload, .{
+        .ecc = .medium,
+    });
+
+    const png_data = try zqr.render.renderPng(a, m, .{
+        .scale = 4,
+        .quiet_zone = 4,
+    });
+    defer a.free(png_data);
+
+    // 1. Verify loadPng decodes into grayscale pixels
+    var img = try png_loader.loadPng(png_data);
+    defer img.deinit();
+
+    const expected_dim: usize = (@as(usize, m.size) + 8) * 4;
+    try testing.expectEqual(expected_dim, img.width);
+    try testing.expectEqual(expected_dim, img.height);
+    try testing.expectEqual(expected_dim * expected_dim, img.pixels.len);
+
+    // 2. Decode pixels through DecoderTier3
+    var dec_buf: [1024]u8 = undefined;
+    const res = try zqr.DecoderTier3.decodeImageAlloc(a, img.pixels, img.width, img.height, &dec_buf);
+    try testing.expectEqualStrings(payload, res.data);
+    try testing.expectEqual(m.version, res.metadata.version);
+    try testing.expectEqual(zqr.Ecc.medium, res.metadata.ecc);
+}
+
+test "cmd_decode: PNG downscaling for high-resolution images (> 1024x1024)" {
+    const testing = std.testing;
+    const a = testing.allocator;
+
+    const payload = "HIGH RESOLUTION DOWNSCALE TEST";
+    var buf: [zqr.Tier3.max_buffer_len]u8 = undefined;
+    const m = try zqr.Tier3.encodeAdvanced(&buf, payload, .{
+        .ecc = .quartile,
+    });
+
+    // (25 + 8) * 35 = 1155x1155 px (> 1024)
+    const png_data = try zqr.render.renderPng(a, m, .{
+        .scale = 35,
+        .quiet_zone = 4,
+    });
+    defer a.free(png_data);
+
+    var img = try png_loader.loadPng(png_data);
+    defer img.deinit();
+
+    try testing.expect(img.width > 1024);
+    try testing.expect(img.height > 1024);
+
+    // Downscale to <= 1024x1024
+    try png_loader.downscaleIfNeeded(a, &img);
+
+    try testing.expect(img.width <= 1024);
+    try testing.expect(img.height <= 1024);
+    try testing.expectEqual(@as(usize, 1024), img.width);
+    try testing.expectEqual(@as(usize, 1024), img.height);
+
+    // Verify downscaled image decodes cleanly
+    var dec_buf: [1024]u8 = undefined;
+    const res = try zqr.DecoderTier3.decodeImageAlloc(a, img.pixels, img.width, img.height, &dec_buf);
+    try testing.expectEqualStrings(payload, res.data);
+    try testing.expectEqual(m.version, res.metadata.version);
+}
+
+test "cmd_decode: CLI execution with PNG and ASCII files" {
+    const testing = std.testing;
+    const a = testing.allocator;
+
+    const payload = "CLI FILE ROUNDTRIP 12345";
+    const png_file = "/tmp/zqr_test_roundtrip.png";
+    const dec_file = "/tmp/zqr_test_roundtrip.txt";
+    defer _ = std.c.unlink(png_file);
+    defer _ = std.c.unlink(dec_file);
+
+    // 1. Encode PNG to file
+    const enc_args = [_][:0]const u8{
+        payload,
+        "-f",
+        "png",
+        "-o",
+        png_file,
+    };
+    try cmd_encode.run(a, &enc_args);
+
+    // 2. Decode PNG via cmd_decode.run to output file
+    const dec_args = [_][:0]const u8{
+        "-i",
+        png_file,
+        "-o",
+        dec_file,
+    };
+    try cmd_decode.run(a, &dec_args);
+
+    const decoded_payload = try io_util.readFileAlloc(a, dec_file);
+    defer a.free(decoded_payload);
+    try testing.expectEqualStrings(payload, decoded_payload);
+
+    // 3. Invalid PNG extension with text content must fail with DecodeFailed
+    const fake_png = "/tmp/zqr_fake.png";
+    defer _ = std.c.unlink(fake_png);
+    try io_util.writeFile(fake_png, "NOT A REAL PNG FILE AT ALL");
+
+    const fake_args = [_][:0]const u8{
+        "-i",
+        fake_png,
+    };
+    try testing.expectError(error.DecodeFailed, cmd_decode.run(a, &fake_args));
+
+    // 4. Missing file must fail with InputOutput
+    const missing_args = [_][:0]const u8{
+        "-i",
+        "/tmp/non_existent_file_xyz_123.png",
+    };
+    try testing.expectError(error.InputOutput, cmd_decode.run(a, &missing_args));
 }

@@ -3,12 +3,14 @@ const zargs = @import("zargs");
 const zqr = @import("zqr");
 const print_util = @import("print_util.zig");
 const io_util = @import("io_util.zig");
+const png_loader = @import("png_loader.zig");
 
 const Flag = zargs.Declarative.Flag;
 const Positional = zargs.Declarative.Positional;
 
 pub const DecodeArgs = struct {
     read_from: Flag([]const u8, .{ .short = 'i', .long = "read-from", .help = "Read matrix from file or '-' for stdin", .default = "" }),
+    output: Flag([]const u8, .{ .short = 'o', .long = "output", .help = "Write decoded payload to file (default: stdout)", .default = "" }),
     verbose: Flag(bool, .{ .short = 'v', .long = "verbose", .help = "Print symbol metadata to stderr", .default = false }),
     help: Flag(bool, .{ .short = 'h', .long = "help", .help = "Show this help and exit", .default = false }),
     input: Positional([]const u8, .{ .help = "Input file path (or '-' for stdin)", .default = "" }),
@@ -404,17 +406,19 @@ fn printVerboseInfo(meta: zqr.DecoderTier3.Metadata) !void {
 }
 
 pub fn printDecodeHelp() !void {
-    try print_util.printStdout("{s:bold:cyan}zqr decode{s:reset} — Decode QR code matrix from ASCII or terminal text\n\n", .{ "", "" });
+    try print_util.printStdout("{s:bold:cyan}zqr decode{s:reset} — Decode QR code from PNG image or ASCII/ANSI terminal text\n\n", .{ "", "" });
     try print_util.printStdout("{s:bold}USAGE:{s:reset}\n", .{""});
     try print_util.printStdout("  zqr decode [OPTIONS] [FILE]\n", .{});
+    try print_util.printStdout("  zqr encode \"Hello\" -f png | zqr decode -\n", .{});
     try print_util.printStdout("  zqr encode \"Hello\" -f ascii | zqr decode -\n\n", .{});
     try print_util.printStdout("{s:bold}OPTIONS:{s:reset}\n", .{""});
     try print_util.printStdout("  {s:bold}-i, --read-from <FILE>{s:reset}   Read input from file or '-' for stdin\n", .{ "", "" });
+    try print_util.printStdout("  {s:bold}-o, --output <FILE>{s:reset}      Write decoded payload to file (default: stdout)\n", .{ "", "" });
     try print_util.printStdout("  {s:bold}-v, --verbose{s:reset}            Print symbol metadata (version, ECC, mask, corrections) to stderr\n", .{ "", "" });
     try print_util.printStdout("  {s:bold}-h, --help{s:reset}               Display this help message\n\n", .{ "", "" });
     try print_util.printStdout("{s:bold}EXIT CODES:{s:reset}\n", .{""});
     try print_util.printStdout("  0: Success\n", .{});
-    try print_util.printStdout("  1: Decode error (invalid matrix, damaged payload exceeding ECC)\n", .{});
+    try print_util.printStdout("  1: Decode error (invalid matrix or image, damaged payload exceeding ECC)\n", .{});
     try print_util.printStdout("  2: I/O error (file not found, read failure, missing input)\n", .{});
 }
 
@@ -437,32 +441,69 @@ pub fn run(allocator: std.mem.Allocator, args: []const [:0]const u8) anyerror!vo
     else
         null;
 
-    const raw_matrix_text = io_util.readPayload(allocator, null, target_input) catch |err| {
+    const raw_input = io_util.readPayload(allocator, null, target_input) catch |err| {
         try print_util.printStderr("{s:bold:red}error:{s:reset} failed to read input: {s}\n", .{ "", @errorName(err) });
         return error.InputOutput;
     };
-    defer allocator.free(raw_matrix_text);
-
-    const parsed_mat = parseMatrixFromText(allocator, raw_matrix_text) catch |err| {
-        try print_util.printStderr("{s:bold:red}error:{s:reset} failed to parse QR matrix from text: {s}\n", .{ "", @errorName(err) });
-        return error.DecodeFailed;
-    };
-    defer allocator.free(parsed_mat.modules);
+    defer allocator.free(raw_input);
 
     var out_buf: [zqr.DecoderTier3.max_decoded_len]u8 = undefined;
-    const res = zqr.DecoderTier3.decode(parsed_mat.modules, parsed_mat.size, &out_buf) catch |err| {
-        try print_util.printStderr("{s:bold:red}error:{s:reset} QR decode failed: {s}\n", .{ "", @errorName(err) });
-        return error.DecodeFailed;
+
+    // Detect format: PNG starts with 8-byte magic "\x89PNG\r\n\x1a\n"
+    const png_magic = "\x89PNG\r\n\x1a\n";
+    const is_png = raw_input.len >= 8 and std.mem.startsWith(u8, raw_input, png_magic);
+
+    const res: zqr.DecodeResult = if (is_png) blk: {
+        var img = png_loader.loadPng(raw_input) catch |err| {
+            try print_util.printStderr("{s:bold:red}error:{s:reset} failed to load PNG image: {s}\n", .{ "", @errorName(err) });
+            return error.DecodeFailed;
+        };
+        defer img.deinit();
+
+        try png_loader.downscaleIfNeeded(allocator, &img);
+
+        const decoded = zqr.DecoderTier3.decodeImageAlloc(allocator, img.pixels, img.width, img.height, &out_buf) catch |err| {
+            try print_util.printStderr("{s:bold:red}error:{s:reset} QR image decode failed: {s}\n", .{ "", @errorName(err) });
+            return error.DecodeFailed;
+        };
+        break :blk decoded;
+    } else blk: {
+        // If file extension explicitly says .png but magic bytes failed, report clear error
+        if (target_input) |path| {
+            if (std.ascii.endsWithIgnoreCase(path, ".png")) {
+                try print_util.printStderr("{s:bold:red}error:{s:reset} input file has .png extension but is not a valid PNG image\n", .{""});
+                return error.DecodeFailed;
+            }
+        }
+
+        const parsed_mat = parseMatrixFromText(allocator, raw_input) catch |err| {
+            try print_util.printStderr("{s:bold:red}error:{s:reset} failed to parse QR code as PNG image or text matrix: {s}\n", .{ "", @errorName(err) });
+            return error.DecodeFailed;
+        };
+        defer allocator.free(parsed_mat.modules);
+
+        const decoded = zqr.DecoderTier3.decode(parsed_mat.modules, parsed_mat.size, &out_buf) catch |err| {
+            try print_util.printStderr("{s:bold:red}error:{s:reset} QR matrix decode failed: {s}\n", .{ "", @errorName(err) });
+            return error.DecodeFailed;
+        };
+        break :blk decoded;
     };
 
     if (parsed.verbose.value) {
         try printVerboseInfo(res.metadata);
     }
 
-    // Write decoded payload directly to stdout
-    const stdout = io_util.stdoutWriter();
-    stdout.writeAll(res.data) catch |err| {
-        try print_util.printStderr("{s:bold:red}error:{s:reset} failed to write output: {s}\n", .{ "", @errorName(err) });
-        return error.InputOutput;
-    };
+    // Write decoded payload to file if requested, or directly to stdout
+    if (parsed.output.value.len > 0) {
+        io_util.writeFile(parsed.output.value, res.data) catch |err| {
+            try print_util.printStderr("{s:bold:red}error:{s:reset} failed to write output: {s}\n", .{ "", @errorName(err) });
+            return error.InputOutput;
+        };
+    } else {
+        const stdout = io_util.stdoutWriter();
+        stdout.writeAll(res.data) catch |err| {
+            try print_util.printStderr("{s:bold:red}error:{s:reset} failed to write output: {s}\n", .{ "", @errorName(err) });
+            return error.InputOutput;
+        };
+    }
 }

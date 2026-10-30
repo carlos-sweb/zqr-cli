@@ -102,7 +102,7 @@ Options:
 
 ## Subcommand: `decode`
 
-Decodes a QR code module matrix from ASCII text (`##`/`  `, `#`/`.`, `1`/`0`, `█`/` `) or terminal ANSI half-block rendering (`▀`). Supports all QR Code Model 2 versions (1..40) with Reed-Solomon and BCH error correction.
+Decodes a QR code from PNG image files, ASCII text (`##`/`  `, `#`/`.`, `1`/`0`, `█`/` `), or terminal ANSI half-block rendering (`▀`). Supports all QR Code Model 2 versions (1..40) with vision-pipeline perspective/orientation recovery, downscaling, and Reed-Solomon and BCH error correction.
 
 ```bash
 zqr decode [OPTIONS] [FILE]
@@ -112,7 +112,8 @@ zqr decode [OPTIONS] [FILE]
 
 | Flag | Short | Default | Description |
 |---|---|---|---|
-| `-i, --read-from <path>` | `-i` | `""` | Read matrix from file or `-` for stdin. |
+| `-i, --read-from <path>` | `-i` | `""` | Read input from file or `-` for stdin. |
+| `-o, --output <path>` | `-o` | `""` | Write decoded payload to file (default: stdout). |
 | `-v, --verbose` | `-v` | `false` | Print symbol metadata (version, ECC, mask, corrections) to stderr. |
 | `-h, --help` | `-h` | | Show help for `decode` command. |
 
@@ -121,11 +122,18 @@ zqr decode [OPTIONS] [FILE]
 | Code | Meaning | Description |
 |---|---|---|
 | `0` | Success | QR symbol decoded successfully; payload written to stdout. |
-| `1` | Decode Error | Corrupt matrix, uncorrectable Reed-Solomon/BCH errors, or invalid QR dimensions. |
+| `1` | Decode Error | Corrupt matrix or image, uncorrectable Reed-Solomon/BCH errors, or invalid QR dimensions. |
 | `2` | I/O Error | Missing input data, file not found, or read/write I/O failure. |
 
-### Canonical Pipe Example
+### Canonical Pipe Examples
 
+PNG pipeline:
+```bash
+zqr encode "Hello World" -f png | zqr decode -
+# Output: Hello World
+```
+
+ASCII text matrix pipeline:
 ```bash
 zqr encode "Hello World" -f ascii | zqr decode -
 # Output: Hello World
@@ -133,14 +141,14 @@ zqr encode "Hello World" -f ascii | zqr decode -
 
 With symbol metadata on stderr:
 ```bash
-zqr encode "Hello World" -f ascii | zqr decode - --verbose
+zqr encode "Hello World" -f png | zqr decode - --verbose
 ```
 Stderr output:
 ```text
 version: 1
 ecc: medium
-mask: 0
-modes_used: alphanumeric
+mask: 2
+modes_used: byte
 errors_corrected_format: 0
 errors_corrected_version: 0
 errors_corrected_data: 0
