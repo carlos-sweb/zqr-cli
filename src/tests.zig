@@ -449,3 +449,30 @@ test "cmd_decode: CLI execution with PNG and ASCII files" {
     };
     try testing.expectError(error.InputOutput, cmd_decode.run(a, &missing_args));
 }
+
+test "cmd_encode: --dot-shape and --eye-shape flags" {
+    const testing = std.testing;
+    const a = testing.allocator;
+
+    const svg_file = "/tmp/zqr_shapes_test.svg";
+    defer _ = std.c.unlink(svg_file);
+
+    const args = [_][:0]const u8{
+        "SMOOTH BLOB TEST",
+        "-f",
+        "svg",
+        "--dot-shape",
+        "rounded",
+        "--eye-shape",
+        "rounded",
+        "-o",
+        svg_file,
+    };
+    try cmd_encode.run(a, &args);
+
+    const svg_content = try io_util.readFileAlloc(a, svg_file);
+    defer a.free(svg_content);
+
+    try testing.expect(std.mem.indexOf(u8, svg_content, "stroke-linejoin=\"round\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg_content, "<circle") != null);
+}

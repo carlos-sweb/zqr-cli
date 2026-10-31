@@ -1,12 +1,12 @@
 .{
     .name = .zqr_cli,
-    .version = "0.3.0",
+    .version = "0.4.0",
     .fingerprint = 0xb2c1aa0af7584646,
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .zqr = .{
-            .url = "git+https://github.com/carlos-sweb/z-libqr?ref=v1.5.0#314991e55d53b97f04712d6f443e74daa16e886e",
-            .hash = "z_libqr-1.5.0-P-K0qtdcCACgsLzEb3-aR1Ne2XDR9wrrIVeQ41ZD1Y7g",
+            .url = "git+https://github.com/carlos-sweb/z-libqr?ref=v1.6.0#f68b0f2e3f9a98409cebd9d16768084de7b85986",
+            .hash = "z_libqr-1.6.0-P-K0qonfCADtf6tlRlKCpr_XPcXg9HSNHiWvzX4s0p8L",
         },
         .zargs = .{
             .url = "git+https://github.com/carlos-sweb/z-args.git?ref=v0.1.0#ad8ff79413de8eef02bc060f8a29ed3a84becd0a",

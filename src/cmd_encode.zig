@@ -49,6 +49,18 @@ pub const Fnc1Choice = enum {
     second,
 };
 
+pub const ShapeChoice = enum {
+    square,
+    rounded,
+
+    pub fn toZqr(self: ShapeChoice) zqr.render.Shape {
+        return switch (self) {
+            .square => .square,
+            .rounded => .rounded,
+        };
+    }
+};
+
 pub const EncodeArgs = struct {
     output: Flag([]const u8, .{ .short = 'o', .long = "output", .help = "Output file path (default: stdout)", .default = "" }),
     format: Flag(Format, .{ .short = 'f', .long = "format", .help = "Output format: auto|svg|png|ansi|ascii (default: auto)", .default = .auto }),
@@ -66,6 +78,8 @@ pub const EncodeArgs = struct {
     structured: Flag([]const u8, .{ .short = 'S', .long = "structured", .help = "Structured Append: 'auto' or count 1..16", .default = "" }),
     scale: Flag(u8, .{ .short = 's', .long = "scale", .help = "Pixels per module for SVG/PNG (default: 8)", .default = 8 }),
     quiet_zone: Flag(u8, .{ .short = 'q', .long = "quiet-zone", .help = "Quiet zone margin in modules (default: 4)", .default = 4 }),
+    dot_shape: Flag(ShapeChoice, .{ .long = "dot-shape", .help = "Data module shape: square|rounded (default: square)", .default = .square }),
+    eye_shape: Flag(ShapeChoice, .{ .long = "eye-shape", .help = "Finder pattern shape: square|rounded (default: square)", .default = .square }),
     fg: Flag([]const u8, .{ .long = "fg", .help = "Foreground color in hex (default: #000000FF)", .default = "#000000FF" }),
     bg: Flag([]const u8, .{ .long = "bg", .help = "Background color in hex (default: #FFFFFFFF)", .default = "#FFFFFFFF" }),
     help: Flag(bool, .{ .short = 'h', .long = "help", .help = "Show this help and exit", .default = false }),
@@ -206,6 +220,8 @@ pub fn run(allocator: std.mem.Allocator, args: []const [:0]const u8) anyerror!vo
     const render_opts = zqr.render.RenderOptions{
         .quiet_zone = parsed.quiet_zone.value,
         .scale = parsed.scale.value,
+        .dot_shape = parsed.dot_shape.value.toZqr(),
+        .eye_shape = parsed.eye_shape.value.toZqr(),
         .foreground = fg_color,
         .background = bg_color,
     };

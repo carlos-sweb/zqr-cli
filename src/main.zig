@@ -16,7 +16,7 @@ const cmd_info = @import("cmd_info.zig");
 /// CLI version from build.zig.zon (single source of truth).
 pub const VERSION: []const u8 = cli_options.cli_version;
 /// Must match the z-libqr ref pinned in build.zig.zon.
-pub const ZQR_VERSION = "1.5.0";
+pub const ZQR_VERSION = "1.6.0";
 
 fn printVersion() !void {
     try print_util.printStdout("zqr {s} (z-libqr {s})\n", .{ VERSION, ZQR_VERSION });

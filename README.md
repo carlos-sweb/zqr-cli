@@ -84,6 +84,8 @@ zqr encode [OPTIONS] [DATA]
 | `-S, --structured <count>` | `-S` | `""` | Structured Append: `auto` or `1`..`16`. Requires `--output`. |
 | `-s, --scale <px>` | `-s` | `8` | Pixels per module (SVG/PNG). |
 | `-q, --quiet-zone <modules>` | `-q` | `4` | Quiet zone (ISO default 4). |
+| `--dot-shape <shape>` | | `square` | Data module shape: `square` or `rounded` (smooth blob). |
+| `--eye-shape <shape>` | | `square` | Finder pattern shape: `square` or `rounded` (1:1:3:1:1 circles). |
 | `--fg <hex>` | | `#000000FF` | Foreground `#RRGGBB` or `#RRGGBBAA`. |
 | `--bg <hex>` | | `#FFFFFFFF` | Background `#RRGGBB` or `#RRGGBBAA`. |
 | `-h, --help` | `-h` | | Encode help. |
