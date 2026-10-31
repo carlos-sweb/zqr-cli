@@ -1,9 +1,9 @@
 # zqr
 
 `zqr` is a command-line QR Code Model 2 **encoder and decoder** built with [Zig 0.17](https://ziglang.org/).
-It is powered by [z-libqr](https://github.com/carlos-sweb/z-libqr) **v1.6.3**, [z-args](https://github.com/carlos-sweb/z-args) v0.1.0, and [z-print](https://github.com/carlos-sweb/z-print) v0.1.0.
+It is powered by [z-libqr](https://github.com/carlos-sweb/z-libqr) **v1.6.4**, [z-args](https://github.com/carlos-sweb/z-args) v0.1.0, and [z-print](https://github.com/carlos-sweb/z-print) v0.1.0.
 
-**CLI version: 0.4.2.**
+**CLI version: 0.4.3.**
 
 Encode supports four output formats (ANSI half-blocks, ASCII, SVG, and PNG), multi-mode DP segmentation, JIS X 0208 Kanji, GS1/AIM FNC1, ECI, and Structured Append (up to 16 symbols).
 Decode accepts PNG images (magic-byte detection), ASCII matrices, and ANSI half-block terminal renderings, with perspective/rotation/mirror/dark-mode recovery via z-libqr’s image pipeline.
@@ -35,7 +35,7 @@ Binary: `zig-out/bin/zqr`.
 
 ```bash
 zqr -V
-# zqr 0.4.2 (z-libqr 1.6.3)
+# zqr 0.4.3 (z-libqr 1.6.4)
 ```
 
 ---
