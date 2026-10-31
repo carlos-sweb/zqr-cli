@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .zqr = .{
-            .url = "git+https://github.com/carlos-sweb/z-libqr?ref=v1.6.0#f68b0f2e3f9a98409cebd9d16768084de7b85986",
-            .hash = "z_libqr-1.6.0-P-K0qonfCADtf6tlRlKCpr_XPcXg9HSNHiWvzX4s0p8L",
+            .url = "git+https://github.com/carlos-sweb/z-libqr.git?ref=v1.6.3#86f7aad8db3858cf833b2aebe5fab2461deab718",
+            .hash = "z_libqr-1.6.3-P-K0quzwCADc8uelFA22CrQSRbDWdo0A6SB0ze-HiVIZ",
         },
         .zargs = .{
             .url = "git+https://github.com/carlos-sweb/z-args.git?ref=v0.1.0#ad8ff79413de8eef02bc060f8a29ed3a84becd0a",

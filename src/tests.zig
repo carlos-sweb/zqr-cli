@@ -473,6 +473,8 @@ test "cmd_encode: --dot-shape and --eye-shape flags" {
     const svg_content = try io_util.readFileAlloc(a, svg_file);
     defer a.free(svg_content);
 
-    try testing.expect(std.mem.indexOf(u8, svg_content, "stroke-linejoin=\"round\"") != null);
+    try testing.expect(std.mem.indexOf(u8, svg_content, "<filter") == null);
+    try testing.expect(std.mem.indexOf(u8, svg_content, "stroke-linejoin") == null);
+    try testing.expect(std.mem.indexOf(u8, svg_content, " C") != null);
     try testing.expect(std.mem.indexOf(u8, svg_content, "<circle") != null);
 }
