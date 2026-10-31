@@ -1,9 +1,9 @@
 # zqr
 
 `zqr` is a command-line QR Code Model 2 **encoder and decoder** built with [Zig 0.17](https://ziglang.org/).
-It is powered by [z-libqr](https://github.com/carlos-sweb/z-libqr) **v1.5.0**, [z-args](https://github.com/carlos-sweb/z-args) v0.1.0, and [z-print](https://github.com/carlos-sweb/z-print) v0.1.0.
+It is powered by [z-libqr](https://github.com/carlos-sweb/z-libqr) **v1.6.3**, [z-args](https://github.com/carlos-sweb/z-args) v0.1.0, and [z-print](https://github.com/carlos-sweb/z-print) v0.1.0.
 
-**CLI version: 0.3.0.**
+**CLI version: 0.4.2.**
 
 Encode supports four output formats (ANSI half-blocks, ASCII, SVG, and PNG), multi-mode DP segmentation, JIS X 0208 Kanji, GS1/AIM FNC1, ECI, and Structured Append (up to 16 symbols).
 Decode accepts PNG images (magic-byte detection), ASCII matrices, and ANSI half-block terminal renderings, with perspective/rotation/mirror/dark-mode recovery via z-libqr’s image pipeline.
@@ -35,7 +35,7 @@ Binary: `zig-out/bin/zqr`.
 
 ```bash
 zqr -V
-# zqr 0.3.0 (z-libqr 1.5.0)
+# zqr 0.4.2 (z-libqr 1.6.3)
 ```
 
 ---
@@ -195,6 +195,22 @@ zqr encode "https://example.com" -o qr.svg
 
 # PNG with custom colors
 zqr encode "CONFIDENTIAL" -e high -s 12 --fg "#003366FF" --bg "#EEEEEEFF" -o badge.png
+```
+
+### Custom shapes and colors (SVG / PNG)
+
+Both SVG and PNG output support custom foreground/background colors and rounded shapes:
+
+```bash
+# Rounded smooth blobs with rounded circular eyes (SVG):
+zqr encode "https://example.com" -f svg --dot-shape rounded --eye-shape rounded -o rounded.svg
+
+# Rounded modules with custom dark blue foreground and off-white background (PNG):
+zqr encode "https://example.com" -f png --dot-shape rounded --eye-shape rounded \
+  --fg "#1A1A2EFF" --bg "#F5F5F5FF" -s 16 -o elegant.png
+
+# Square data modules with rounded concentric finder eyes:
+zqr encode "https://example.com" -f svg --dot-shape square --eye-shape rounded -o hybrid.svg
 ```
 
 ### Decode
